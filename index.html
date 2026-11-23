@@ -99,7 +99,7 @@ body::before {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: -1;
   pointer-events: none;
   background-image: url("8AF288F1-2B95-4520-9E00-9E61D8534391.png");
   background-position: center top;
@@ -108,7 +108,7 @@ body::before {
   opacity: 0.35;
 }
 body {
-  position: relative;
+position: relative; isolation: isolate;
 }
 
 </style>
