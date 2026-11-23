@@ -94,6 +94,22 @@ footer a{color:#fff}
 .photo-dialog::backdrop{background:#0007}
 .photo-dialog button{border:0;border-radius:8px;background:#c71925;color:#fff;padding:12px 20px;font:700 14px Arial;cursor:pointer}
 @media(max-width:750px){.top-search .catalog-controls{grid-template-columns:1fr 1fr}.top-search .search-input-wrap{grid-column:1/-1}}
+/* TESLA PARK — faint background parts */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index:  1;
+  pointer-events: none;
+  background-image:
+    url("parts-left.png"),
+    url("parts-right.png");
+  background-position: left center, right center;
+  background-repeat: no-repeat;
+  background-size: 17% auto, 17% auto;
+  opacity: 0.06;
+}
+
 </style>
 </head>
 <body>
