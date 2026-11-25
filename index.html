@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+un<!DOCTYPE html>
 <html lang="hy">
 <head>
 <meta charset="UTF-8">
@@ -278,7 +278,7 @@ let preview = document.getElementById('search-preview');
 if (!preview) {
   preview = document.createElement('div');
   preview.id = 'search-preview';
-  preview.style.cssText = 'width:100%;margin:10px 0;';
+preview.style.cssText = 'grid-column:1/-1;width:100%;margin:10px 0;'; 
   document.querySelector('.search-input-wrap').after(preview);
 }
 preview.replaceChildren();
