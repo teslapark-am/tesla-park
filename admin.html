@@ -1,0 +1,186 @@
+ <!DOCTYPE html>
+<html lang="hy">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>TESLA PARK ADMIN</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f4f4;font-family:Arial,sans-serif;color:#222}
+header{background:#c90019;color:white;text-align:center;padding:22px;font-size:24px;font-weight:bold}
+main{max-width:800px;margin:auto;padding:16px}
+section{background:white;padding:20px;border-radius:12px;margin-bottom:16px}
+input,select,textarea,button{width:100%;padding:13px;margin:6px 0;font-size:16px;border:1px solid #ddd;border-radius:8px}
+button{background:#c90019;color:white;border:0;font-weight:bold;cursor:pointer}
+.secondary{background:#333}
+.product{padding:15px;border:1px solid #ddd;border-radius:10px;margin:10px 0}
+.product img{width:100px;height:80px;object-fit:contain}
+[hidden]{display:none!important}
+#status{white-space:pre-wrap}
+</style>
+</head>
+<body>
+<header>TESLA PARK | ADMIN</header>
+<main>
+<p id="status"></p>
+<section id="login">
+<h2>Մուտք</h2>
+<input id="email" type="email" placeholder="Էլ. հասցե">
+<input id="password" type="password" placeholder="Գաղտնաբառ">
+<button onclick="signIn()">Մուտք գործել</button>
+</section>
+<div id="panel" hidden>
+<button class="secondary" onclick="signOut()">Դուրս գալ</button>
+<section>
+<h2 id="formTitle">Ավելացնել ապրանք</h2>
+<input id="name" placeholder="Ապրանքի անվանում">
+<input id="model" list="models" placeholder="Tesla մոդել">
+<datalist id="models">
+<option value="Model 3 Highland">
+<option value="Model Y Juniper">
+</datalist>
+<input id="part_number" placeholder="Part Number">
+<textarea id="description" placeholder="Նկարագրություն"></textarea>
+<input id="price" type="number" min="0" placeholder="Գին (դրամ)">
+<input id="image_url" type="url" placeholder="Նկարի հղում">
+<select id="availability">
+<option value="Առկա է">Առկա է</option>
+<option value="Առկա չէ">Առկա չէ</option>
+<option value="Պատվերով">Պատվերով</option>
+</select>
+<button onclick="saveProduct()">Պահպանել ապրանքը</button>
+<button class="secondary" onclick="resetForm()">Մաքրել դաշտերը</button>
+</section>
+<section>
+<h2>Ապրանքներ</h2>
+<input id="search" placeholder="Որոնել ապրանք կամ կոդ" oninput="render()">
+<div id="products"></div>
+</section>
+</div>
+</main>
+<script>
+const db = supabase.createClient(
+"https://cytlfzxwvlmwuqwtyawg.supabase.co",
+"sb_publishable_i4tniJ6aVEvJsj724QCKfw_mABttPIT"
+);
+const adminId = "93b1b49f-e852-4db4-b0c7-e8875d52e547";
+const el = id => document.getElementById(id);
+const fields = ["name","model","part_number","description","price","image_url","availability"];
+let items = [];
+let editing = null;
+function status(text){el("status").textContent=text}
+async function signIn(){
+const {error}=await db.auth.signInWithPassword({
+email:el("email").value.trim(),
+password:el("password").value
+});
+el("password").value="";
+if(error){status(error.message);return}
+await init();
+}
+async function signOut(){
+await db.auth.signOut();
+items=[];
+editing=null;
+await init();
+}
+async function init(){
+const {data}=await db.auth.getUser();
+const allowed=data.user?.id===adminId;
+el("login").hidden=allowed;
+el("panel").hidden=!allowed;
+if(allowed){status("");await load()}
+else if(data.user){
+await db.auth.signOut();
+status("Մուտքն արգելված է");
+}
+}
+async function load(){
+const {data,error}=await db.from("products")
+.select("id,name,model,part_number,description,price,image_url,availability")
+.order("created_at",{ascending:false});
+if(error){status(error.message);return}
+items=data||[];
+render();
+}
+function resetForm(){
+editing=null;
+fields.forEach(f=>el(f).value="");
+el("availability").value="Առկա է";
+el("formTitle").textContent="Ավելացնել ապրանք";
+}
+async function saveProduct(){
+const p={};
+fields.forEach(f=>p[f]=el(f).value.trim());
+if(!p.name||!p.model){
+status("Լրացրու անվանումը և մոդելը");return
+}
+p.price=p.price===""?null:Number(p.price);
+if(p.price!==null&&(!Number.isFinite(p.price)||p.price<0)){
+status("Սխալ գին");return
+}
+const query=editing
+?db.from("products").update(p).eq("id",editing)
+:db.from("products").insert(p);
+const {data,error}=await query.select("id");
+if(error){status(error.message);return}
+if(!data?.length){status("Ապրանքը չի պահպանվել");return}
+resetForm();
+await load();
+status("Ապրանքը պահպանված է");
+}
+function editProduct(p){
+editing=p.id;
+fields.forEach(f=>{
+if(f==="availability"&&!Array.from(el(f).options).some(o=>o.value===p[f])&&p[f]){
+el(f).add(new Option(p[f],p[f]));
+}
+el(f).value=p[f]??"";
+});
+el("formTitle").textContent="Խմբագրել ապրանքը";
+window.scrollTo({top:0,behavior:"smooth"});
+}
+async function deleteProduct(p){
+if(!confirm("Ջնջե՞լ "+p.name+" ապրանքը"))return;
+const {data,error}=await db.from("products").delete().eq("id",p.id).select("id");
+if(error){status(error.message);return}
+if(!data?.length){status("Ապրանքը չի ջնջվել");return}
+if(editing===p.id)resetForm();
+await load();
+status("Ապրանքը ջնջված է");
+}
+function render(){
+const root=el("products");
+root.replaceChildren();
+const q=el("search").value.toLowerCase();
+items.filter(p=>[p.name,p.model,p.part_number].join(" ").toLowerCase().includes(q)).forEach(p=>{
+const card=document.createElement("div");
+card.className="product";
+if(p.image_url){
+const img=document.createElement("img");
+img.src=p.image_url;
+card.append(img);
+}
+const title=document.createElement("h3");
+title.textContent=p.name;
+card.append(title);
+const info=document.createElement("p");
+info.textContent=[p.model,p.part_number,p.price==null?"Գինը նշված չէ":p.price+" ֏",p.availability].join(" | ");
+card.append(info);
+const edit=document.createElement("button");
+edit.textContent="Խմբագրել";
+edit.onclick=()=>editProduct(p);
+const del=document.createElement("button");
+del.className="secondary";
+del.textContent="Ջնջել";
+del.onclick=()=>deleteProduct(p);
+card.append(edit,del);
+root.append(card);
+});
+}
+init();
+</script>
+</body>
+</html>
